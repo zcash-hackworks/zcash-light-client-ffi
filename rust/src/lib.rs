@@ -714,13 +714,14 @@ pub extern "C" fn zcashlc_get_verified_balance(
     db_data_len: usize,
     account: i32,
     network_id: u32,
+    min_confirmations: u32,
 ) -> i64 {
     let res = catch_panic(|| {
         let network = parse_network(network_id)?;
         let db_data = wallet_db(db_data, db_data_len, network)?;
         if account >= 0 {
             (&db_data)
-                .get_target_and_anchor_heights(ANCHOR_OFFSET)
+                .get_target_and_anchor_heights(min_confirmations)
                 .map_err(|e| format_err!("Error while fetching anchor height: {}", e))
                 .and_then(|opt_anchor| {
                     opt_anchor
@@ -748,14 +749,15 @@ pub extern "C" fn zcashlc_get_verified_transparent_balance(
     db_data_len: usize,
     address: *const c_char,
     network_id: u32,
+    min_confirmations: u32,
 ) -> i64 {
     let res = catch_panic(|| {
         let network = parse_network(network_id)?;
-        let db_data = wallet_db(db_data, db_data_len, network)?;
+        let wallet_db = wallet_db(db_data, db_data_len, network)?;
         let addr = unsafe { CStr::from_ptr(address).to_str()? };
         let taddr = TransparentAddress::decode(&network, &addr).unwrap();
-        let amount = (&db_data)
-            .get_target_and_anchor_heights(ANCHOR_OFFSET)
+        let amount = (&wallet_db)
+            .get_target_and_anchor_heights(min_confirmations)
             .map_err(|e| format_err!("Error while fetching anchor height: {}", e))
             .and_then(|opt_anchor| {
                 opt_anchor
@@ -763,7 +765,7 @@ pub extern "C" fn zcashlc_get_verified_transparent_balance(
                     .ok_or(format_err!("height not available; scan required."))
             })
             .and_then(|anchor| {
-                (&db_data)
+                (&wallet_db)
                     .get_unspent_transparent_outputs(&taddr, anchor)
                     .map_err(|e| {
                         format_err!("Error while fetching verified transparent balance: {}", e)
@@ -790,11 +792,11 @@ pub extern "C" fn zcashlc_get_total_transparent_balance(
 ) -> i64 {
     let res = catch_panic(|| {
         let network = parse_network(network_id)?;
-        let db_data = wallet_db(db_data, db_data_len, network)?;
+        let wallet_db = wallet_db(db_data, db_data_len, network)?;
         let addr = unsafe { CStr::from_ptr(address).to_str()? };
         let taddr = TransparentAddress::decode(&network, &addr).unwrap();
-        let amount = (&db_data)
-            .get_target_and_anchor_heights(ANCHOR_OFFSET)
+        let amount = (&wallet_db)
+            .get_target_and_anchor_heights(0u32)
             .map_err(|e| format_err!("Error while fetching anchor height: {}", e))
             .and_then(|opt_anchor| {
                 opt_anchor
@@ -802,7 +804,7 @@ pub extern "C" fn zcashlc_get_total_transparent_balance(
                     .ok_or(format_err!("height not available; scan required."))
             })
             .and_then(|anchor| {
-                (&db_data)
+                (&wallet_db)
                     .get_unspent_transparent_outputs(&taddr, anchor)
                     .map_err(|e| {
                         format_err!("Error while fetching total transparent balance: {}", e)
@@ -1150,6 +1152,7 @@ pub extern "C" fn zcashlc_create_to_address(
     output_params: *const u8,
     output_params_len: usize,
     network_id: u32,
+    min_confirmations: u32,
 ) -> i64 {
     let res = catch_panic(|| {
         let network = parse_network(network_id)?;
@@ -1194,7 +1197,6 @@ pub extern "C" fn zcashlc_create_to_address(
             }
         };
 
-        // TODO: consider warning in this case somehow, rather than swallowing this error
         let memo = match to {
             RecipientAddress::Shielded(_) | RecipientAddress::Unified(_) => {
                 let memo_value = Memo::from_str(&memo).map_err(|_| format_err!("Invalid memo"))?;
@@ -1215,7 +1217,7 @@ pub extern "C" fn zcashlc_create_to_address(
             value,
             memo,
             OvkPolicy::Sender,
-            ANCHOR_OFFSET,
+            min_confirmations,
         )
         .map_err(|e| format_err!("Error while sending funds: {}", e))
     });
