@@ -35,6 +35,8 @@ int32_t zcashlc_clear_utxos(const uint8_t *db_data,
  *
  * Do not call this multiple times in parallel, or you will generate transactions that
  * double-spend the same notes.
+ *
+ * Parameter memo assumes there are 512 bytes and will parse them as specified ZIP-302
  */
 int64_t zcashlc_create_to_address(const uint8_t *db_data,
                                   uintptr_t db_data_len,
@@ -42,7 +44,7 @@ int64_t zcashlc_create_to_address(const uint8_t *db_data,
                                   const char *extsk,
                                   const char *to,
                                   int64_t value,
-                                  const char *memo,
+                                  const uint8_t *memo,
                                   const uint8_t *spend_params,
                                   uintptr_t spend_params_len,
                                   const uint8_t *output_params,
@@ -124,9 +126,6 @@ char *zcashlc_derive_transparent_address_from_seed(const uint8_t *seed,
                                                    uint32_t network_id);
 
 /**
- * TEST TEST 123 TEST
- *
- *
  * Derives a transparent private key from seed
  */
 char *zcashlc_derive_transparent_private_key_from_seed(const uint8_t *seed,
@@ -171,6 +170,20 @@ int32_t zcashlc_get_nearest_rewind_height(const uint8_t *db_data,
                                           uint32_t network_id);
 
 /**
+ * Returns the memo for a received note by copying the corresponding bytes to the received
+ * pointer in `memo_bytes_ret`. This function assumes that there's enough memory allocated
+ * for the 512 bytes needed to store a memo.
+ *
+ * The note is identified by its row index in the `received_notes` table within the data
+ * database.
+ */
+bool zcashlc_get_received_memo(const uint8_t *db_data,
+                               uintptr_t db_data_len,
+                               int64_t id_note,
+                               uint8_t *memo_bytes_ret,
+                               uint32_t network_id);
+
+/**
  * Returns the memo for a received note, if it is known and a valid UTF-8 string.
  *
  * The note is identified by its row index in the `received_notes` table within the data
@@ -182,6 +195,22 @@ char *zcashlc_get_received_memo_as_utf8(const uint8_t *db_data,
                                         uintptr_t db_data_len,
                                         int64_t id_note,
                                         uint32_t network_id);
+
+/**
+ * Returns the memo for a sent note, by copying the corresponding bytes to the received
+ * pointer in `memo_bytes_ret`. This function assumes that there's enough memory allocated
+ * for the 512 bytes needed to store a memo.
+ *
+ * The note is identified by its row index in the `sent_notes` table within the data
+ * database.
+ *
+ * Call `zcashlc_byte_array_free` on the returned pointer when you are finished with it.
+ */
+bool zcashlc_get_sent_memo(const uint8_t *db_data,
+                           uintptr_t db_data_len,
+                           int64_t id_note,
+                           uint8_t *memo_bytes_ret,
+                           uint32_t network_id);
 
 /**
  * Returns the memo for a sent note, if it is known and a valid UTF-8 string.
@@ -343,7 +372,7 @@ int64_t zcashlc_shield_funds(const uint8_t *db_data,
                              int32_t account,
                              const char *tsk,
                              const char *extsk,
-                             const char *memo,
+                             const uint8_t *memo,
                              const uint8_t *spend_params,
                              uintptr_t spend_params_len,
                              const uint8_t *output_params,
