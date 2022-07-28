@@ -4,8 +4,8 @@
 #include <stdlib.h>
 
 typedef struct {
-  const char *extfvk;
-  const char *extpub;
+  uint32_t account_id;
+  const char *encoding;
 } FFIUnifiedViewingKey;
 
 typedef struct {
@@ -89,30 +89,34 @@ char **zcashlc_derive_extended_spending_keys(const uint8_t *seed,
                                              uint32_t network_id);
 
 /**
- * derives a shielded address from the given seed.
- * call zcashlc_string_free with the returned pointer when done using it
- */
-char *zcashlc_derive_shielded_address_from_seed(const uint8_t *seed,
-                                                uintptr_t seed_len,
-                                                int32_t account_index,
-                                                uint32_t network_id);
-
-/**
  * derives a shielded address from the given viewing key.
  * call zcashlc_string_free with the returned pointer when done using it
  */
-char *zcashlc_derive_shielded_address_from_viewing_key(const char *extfvk, uint32_t network_id);
+char *zcashlc_derive_shielded_address_from_viewing_key(const char *ufvk, uint32_t network_id);
+
+/**
+ * TEST TEST 123 TEST
+ *
+ *
+ * Derives a transparent account private key from seed
+ */
+char *zcashlc_derive_transparent_account_private_key_from_seed(const uint8_t *seed,
+                                                               uintptr_t seed_len,
+                                                               int32_t account,
+                                                               uint32_t network_id);
+
+/**
+ * Derives a transparent address from the given account private key.
+ */
+char *zcashlc_derive_transparent_address_from_account_private_key(const char *xprv,
+                                                                  int32_t index,
+                                                                  uint32_t network_id);
 
 /**
  * derives a shielded address from the given viewing key.
  * call zcashlc_string_free with the returned pointer when done using it
  */
 char *zcashlc_derive_transparent_address_from_public_key(const char *pubkey, uint32_t network_id);
-
-/**
- * Derives a transparent address from the given secret key enconded as a WIF string
- */
-char *zcashlc_derive_transparent_address_from_secret_key(const char *tsk, uint32_t network_id);
 
 /**
  * Derives a transparent address from the given seed
@@ -124,16 +128,13 @@ char *zcashlc_derive_transparent_address_from_seed(const uint8_t *seed,
                                                    uint32_t network_id);
 
 /**
- * TEST TEST 123 TEST
- *
- *
- * Derives a transparent private key from seed
+ * derives a unified address from the given seed.
+ * call zcashlc_string_free with the returned pointer when done using it
  */
-char *zcashlc_derive_transparent_private_key_from_seed(const uint8_t *seed,
-                                                       uintptr_t seed_len,
-                                                       int32_t account,
-                                                       int32_t index,
-                                                       uint32_t network_id);
+char *zcashlc_derive_unified_address_from_seed(const uint8_t *seed,
+                                               uintptr_t seed_len,
+                                               int32_t account_index,
+                                               uint32_t network_id);
 
 FFIUVKBoxedSlice *zcashlc_derive_unified_viewing_keys_from_seed(const uint8_t *seed,
                                                                 uintptr_t seed_len,
@@ -240,7 +241,7 @@ char **zcashlc_init_accounts_table(const uint8_t *db_data,
                                    uint32_t network_id);
 
 /**
- * Initialises the data database with the given extended full viewing keys
+ * Initialises the data database with the given unified full viewing keys
  * Call `zcashlc_vec_string_free` on the returned pointer when you are finished with it.
  */
 bool zcashlc_init_accounts_table_with_keys(const uint8_t *db_data,
@@ -294,7 +295,6 @@ int32_t zcashlc_last_error_length(void);
 
 bool zcashlc_put_utxo(const uint8_t *db_data,
                       uintptr_t db_data_len,
-                      const char *address_str,
                       const uint8_t *txid_bytes,
                       uintptr_t txid_bytes_len,
                       int32_t index,
@@ -341,7 +341,7 @@ int32_t zcashlc_scan_blocks(const uint8_t *db_cache,
 int64_t zcashlc_shield_funds(const uint8_t *db_data,
                              uintptr_t db_data_len,
                              int32_t account,
-                             const char *tsk,
+                             const char *xprv,
                              const char *extsk,
                              const char *memo,
                              const uint8_t *spend_params,
